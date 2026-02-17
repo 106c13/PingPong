@@ -1,4 +1,5 @@
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -16,7 +17,6 @@ Client* getClientByFd(Server* server, int fd) {
     }
     return NULL;
 }
-
 
 void exitServer(Server* server) {
     close(server->servFd);
@@ -103,6 +103,7 @@ void flushSendBuffer(Server* server, Client* client) {
     if (len == 0)
         return;
 
+    //printf("BUFFER (%d): %s\n", client->fd, buf->data + buf->start);
     int n = write(client->fd, buf->data + buf->start, len);
     if (n > 0) {
         consume(buf, n);
@@ -136,13 +137,29 @@ static void startGame(Server* server) {
     sendToClient(server, c2, "START");
 }
 
+void addClient(Server* server, int fd) {
+    Client* newClient = malloc(sizeof(Client));
+    
+    if (!newClient)
+        return;
+
+    newClient->fd = fd;
+    initBuffer(&newClient->sendBuffer, 32);
+    initBuffer(&newClient->recvBuffer, 32);
+
+    server->clients[server->clientCount++] = newClient;
+
+    printf("New player connected...\n");
+
+    if (server->clientCount > 0 && server->clientCount % 2 == 0)
+        startGame(server);
+}
+
 void processEvent(struct epoll_event* event, Server* server) {
     int fd = event->data.fd;
 
     if (fd == server->servFd) {
         acceptClient(server);
-        if (server->clientCount > 0 && server->clientCount % 2 == 0)
-            startGame(server);
         return;
     }
 
@@ -157,10 +174,15 @@ void processEvent(struct epoll_event* event, Server* server) {
             deleteClient(server, fd);
             return;
         }
-        //printf("Received: %.*s (%d)\n", n, buf, n);
-        buf[n] = '\n';
-        buf[n + 1] = '\0';
-        sendToClient(server, client->opponent, buf);
+
+        buf[n] = '\0';
+
+        printf("Received (%d): %.*s", fd, n, buf);
+
+        if (strcmp(buf, "CONNECT\n") == 0)
+            addClient(server, fd);
+        else if (client)
+            sendToClient(server, client->opponent, buf);
     }
     
     if (event->events & EPOLLOUT) {
@@ -169,7 +191,13 @@ void processEvent(struct epoll_event* event, Server* server) {
 }
 
 void acceptClient(Server* server) {
-    int clientFd = accept(server->servFd, NULL, NULL);
+    struct sockaddr_in clientAddr;
+    socklen_t addrLen = sizeof(clientAddr);
+
+    int clientFd = accept(server->servFd,
+                          (struct sockaddr*)&clientAddr,
+                          &addrLen);
+
     if (clientFd < 0)
         return;
 
@@ -179,21 +207,18 @@ void acceptClient(Server* server) {
         return;
     }
 
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &clientAddr.sin_addr, ip, sizeof(ip));
+
+    printf("Got connection from %s:%d\n",
+           ip,
+           ntohs(clientAddr.sin_port));
+
     struct epoll_event ev;
     ev.events = EPOLLIN;
     ev.data.fd = clientFd;
 
     epoll_ctl(server->epollFd, EPOLL_CTL_ADD, clientFd, &ev);
-
-    Client* newClient = malloc(sizeof(Client));
-
-    newClient->fd = clientFd;
-    initBuffer(&newClient->sendBuffer, 32);
-    initBuffer(&newClient->recvBuffer, 32);
-
-    server->clients[server->clientCount++] = newClient;
-
-    printf("New player connected...\n");
 }
 
 void loopServer(Server* server) {

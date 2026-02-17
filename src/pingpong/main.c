@@ -10,16 +10,15 @@
 #define SERVER_PORT 8080
 #define BUF_SIZE    32
 
-int main() {
+static int connectToServer(void) {
     int sFd;
     int opt = 1;
     struct sockaddr_in addr;
-    char buffer[BUF_SIZE];
 
     sFd = socket(AF_INET, SOCK_STREAM, 0);
     if (sFd < 0) {
-        write(STDERR_FILENO, "Failed to create socket\n", 24);
-        return 1;
+        perror("socket");
+        return -1;
     }
 
     setsockopt(sFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
@@ -29,29 +28,53 @@ int main() {
     addr.sin_port = htons(SERVER_PORT);
 
     if (inet_pton(AF_INET, SERVER_IP, &addr.sin_addr) <= 0) {
-        perror("Invalid address");
+        perror("inet_pton");
         close(sFd);
-        return 1;
+        return -1;
     }
 
     if (connect(sFd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        perror("connect failed");
+        perror("connect");
         close(sFd);
-        return 1;
+        return -1;
     }
 
     printf("Connected to server %s:%d\n", SERVER_IP, SERVER_PORT);
-   
-    printf("Waiting for oponent...\n");
-    if (recv(sFd, buffer, BUF_SIZE - 1, 0) < 0) {
+    return sFd;
+}
+
+static int waitForStart(int sFd) {
+    char buffer[BUF_SIZE];
+
+    if (send(sFd, "CONNECT\n", 8, 0) < 0)
+        return -1;
+
+    printf("Waiting for opponent...\n");
+
+    int n = recv(sFd, buffer, BUF_SIZE - 1, 0);
+    if (n <= 0)
+        return -1;
+
+    buffer[n] = '\0';
+
+    if (strcmp(buffer, "START") == 0)
+        return 0;
+
+    return -1;
+}
+
+int main(void) {
+    int sFd = connectToServer();
+    if (sFd < 0)
+        return 1;
+
+    if (waitForStart(sFd) < 0) {
         printf("Server error...\n");
         close(sFd);
         return 1;
     }
-    
-    if (strcmp(buffer, "START") == 0) {
-        pingpong(sFd); //acctual game
-    }
+
+    pingpong(sFd);
 
     close(sFd);
     return 0;

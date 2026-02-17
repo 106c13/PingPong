@@ -40,9 +40,8 @@ void pingpong(int sfd) {
 	while (running) {
         char buf[32];
 
-        int n = recv(sfd, buf, 32, MSG_DONTWAIT);
+        int n = recv(sfd, buf, sizeof(buf), MSG_DONTWAIT);
 
-        //printf("Recv: %s\n", buf);
         if (n > 0) {
             enemy.rect.y = (int)strtol(buf, NULL, 10);
         }
@@ -56,7 +55,7 @@ void pingpong(int sfd) {
         drawPaddle(ctx, &enemy);
         drawBall(ctx, &ball);
 
-        snprintf(buf, sizeof(buf), "%d", player.rect.y);
+        snprintf(buf, sizeof(buf), "%d\n", player.rect.y);
         send(sfd, buf, strlen(buf), 0);
         
         SDL_RenderPresent(ctx->renderer);
