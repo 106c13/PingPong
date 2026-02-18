@@ -29,22 +29,17 @@ static void handleEvents(bool* running, int* y) {
     }
 }
 
-void pingpong(int sfd) {
+void pingpong(int sfd, int* pos) {
     SDLContext* ctx = createWindow(WIDTH, HEIGHT, "Ping Pong");
-    Paddle player = initPaddle(0);
-    Paddle enemy = initPaddle(WIDTH - PADDLE_WIDTH);
-    Ball ball = initBall( WIDTH / 2, HEIGHT / 2, 10);
+    Paddle player = initPaddle(0, pos[0]);
+    Paddle enemy = initPaddle(WIDTH - PADDLE_WIDTH, pos[1]);
+    Ball ball = initBall(pos[2], pos[3], 10);
 
 	bool running = true;
 
 	while (running) {
         char buf[32];
 
-        int n = recv(sfd, buf, sizeof(buf), MSG_DONTWAIT);
-
-        if (n > 0) {
-            enemy.rect.y = (int)strtol(buf, NULL, 10);
-        }
 
         handleEvents(&running, &player.rect.y);
 
@@ -60,7 +55,20 @@ void pingpong(int sfd) {
         
         SDL_RenderPresent(ctx->renderer);
         SDL_Delay(10);
+
+        int n = recv(sfd, buf, sizeof(buf), 0);
+
+        if (n > 0) {
+			char* p = strchr(buf, ':'); //buf;
+            //player.rect.y = (int)strtol(p + 1, &p, 10);
+			enemy.rect.y = (int)strtol(p + 1, &p, 10);
+			ball.x = (int)strtol(p + 1, &p, 10);
+			ball.y = (int)strtol(p + 1, &p, 10);
+        } else {
+			break;
+		}
 	}
+
     destroyWindow(ctx);
 }
 

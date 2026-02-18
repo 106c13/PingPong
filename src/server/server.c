@@ -132,9 +132,14 @@ static void startGame(Server* server) {
 
     c1->opponent = c2;
     c2->opponent = c1;
+	c1->y = 250;
+	c2->y = 250;
 
-    sendToClient(server, c1, "START");
-    sendToClient(server, c2, "START");
+	char buf[32];
+
+	snprintf(buf, sizeof(buf), "START:%d:%d:300:300\n", c1->y, c2->y);
+    sendToClient(server, c1, buf);
+    sendToClient(server, c2, buf);
 }
 
 void addClient(Server* server, int fd) {
@@ -181,8 +186,11 @@ void processEvent(struct epoll_event* event, Server* server) {
 
         if (strcmp(buf, "CONNECT\n") == 0)
             addClient(server, fd);
-        else if (client)
+        else if (client) {
+			client->y = (int)strtol(buf, NULL, 10);
+			snprintf(buf, sizeof(buf), "%d:%d:%d:%d\n", client->opponent->y, client->y, client->y, client->y);
             sendToClient(server, client->opponent, buf);
+		}
     }
     
     if (event->events & EPOLLOUT) {

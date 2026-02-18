@@ -34,14 +34,14 @@ void        destroyWindow(SDLContext* ctx);
 
 /* paddle.c */
 void    drawPaddle(SDLContext* ctx, Paddle* pad);
-Paddle  initPaddle(int x);
+Paddle  initPaddle(int x, int y);
 
 /* ball.c */
 void    drawBall(SDLContext* ctx, Ball* ball);
 Ball    initBall(int x, int y, int r);
 
 /* game.c */
-void    pingpong(int sfd);
+void    pingpong(int sfd, int* pos);
 
 #endif
 

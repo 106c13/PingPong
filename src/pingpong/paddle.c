@@ -11,11 +11,11 @@ void drawPaddle(SDLContext* ctx, Paddle* pad) {
     SDL_RenderFillRect(ctx->renderer, &pad->rect);
 }
 
-Paddle initPaddle(int x) {
+Paddle initPaddle(int x, int y) {
     Paddle pad;
 
     pad.rect.x = x;
-    pad.rect.y = HEIGHT / 2 - PADDLE_HEIGHT / 2;
+    pad.rect.y = y;
     pad.rect.w = PADDLE_WIDTH;
     pad.rect.h = PADDLE_HEIGHT;
     pad.color = 0xFFFFFF;

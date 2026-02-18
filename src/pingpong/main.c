@@ -12,7 +12,6 @@
 
 static int connectToServer(void) {
     int sFd;
-    int opt = 1;
     struct sockaddr_in addr;
 
     sFd = socket(AF_INET, SOCK_STREAM, 0);
@@ -21,7 +20,11 @@ static int connectToServer(void) {
         return -1;
     }
 
-    setsockopt(sFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+	struct timeval tv;
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+
+	setsockopt(sFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -43,38 +46,59 @@ static int connectToServer(void) {
     return sFd;
 }
 
-static int waitForStart(int sFd) {
-    char buffer[BUF_SIZE];
+static int recvPositions(char* buf, int* pos) {
+	if (!buf || *buf != ':')
+		return -1;
 
-    if (send(sFd, "CONNECT\n", 8, 0) < 0)
-        return -1;
+	int i = 0;
 
-    printf("Waiting for opponent...\n");
+	while (i < 4) {
+		pos[i++] = (int)strtol(buf + 1, &buf, 10);
 
-    int n = recv(sFd, buffer, BUF_SIZE - 1, 0);
-    if (n <= 0)
-        return -1;
+		if (*buf == '\n')
+			break;
 
-    buffer[n] = '\0';
+		if (*buf != ':')
+			return -1;
 
-    if (strcmp(buffer, "START") == 0)
-        return 0;
+	}
+	return 0;
+}
 
-    return -1;
+static int waitForStart(int sFd, int* pos) {
+	char buf[BUF_SIZE];
+
+	if (send(sFd, "CONNECT\n", 8, 0) < 0)
+		return -1;
+
+	printf("Waiting for opponent...\n");
+
+	int n = recv(sFd, buf, BUF_SIZE - 1, 0);
+	if (n <= 0)
+		return -1;
+
+	buf[n] = '\0';
+
+	if (strncmp(buf, "START", 5) != 0)
+		return -1;
+
+	return recvPositions(strchr(buf, ':'), pos);
 }
 
 int main(void) {
     int sFd = connectToServer();
+	int pos[4];
+
     if (sFd < 0)
         return 1;
 
-    if (waitForStart(sFd) < 0) {
+    if (waitForStart(sFd, pos) < 0) {
         printf("Server error...\n");
         close(sFd);
         return 1;
     }
 
-    pingpong(sFd);
+    pingpong(sFd, pos);
 
     close(sFd);
     return 0;

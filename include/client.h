@@ -8,6 +8,7 @@ typedef struct s_client {
     Buffer              sendBuffer;
     Buffer              recvBuffer;
     struct s_client*    opponent;
+	int					y;
 } Client;
 
 #endif
