@@ -54,6 +54,7 @@ static int recvPositions(char* buf, int* pos) {
 
 	while (i < 4) {
 		pos[i++] = (int)strtol(buf + 1, &buf, 10);
+        printf("GOT: %d\n", pos[i - 1]);
 
 		if (*buf == '\n')
 			break;
@@ -67,22 +68,45 @@ static int recvPositions(char* buf, int* pos) {
 
 static int waitForStart(int sFd, int* pos) {
 	char buf[BUF_SIZE];
-
+    int total = 0;
+    
 	if (send(sFd, "CONNECT\n", 8, 0) < 0)
 		return -1;
 
+    // =========== setTimout(int sec) ===========
+    struct timeval tv;
+    tv.tv_sec = 60;
+    tv.tv_usec = 0;
+    setsockopt(sFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    // ==========================================
+
 	printf("Waiting for opponent...\n");
 
-	int n = recv(sFd, buf, BUF_SIZE - 1, 0);
-	if (n <= 0)
-		return -1;
+	buf[0] = '\0';
+    while (!strchr(buf, '\n')) {
+        int n = recv(sFd, buf + total, BUF_SIZE, 0);
 
-	buf[n] = '\0';
+	    if (n <= 0)
+		    return -1;
 
-	if (strncmp(buf, "START", 5) != 0)
-		return -1;
+        total += n;
+        if (total >= BUF_SIZE)
+            return -1;
+    }
 
-	return recvPositions(strchr(buf, ':'), pos);
+    tv.tv_sec = 1;
+    setsockopt(sFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+    printf("Recv: %s\n", buf);
+
+	if (strncmp(buf, "START", 5) == 0)
+	    return recvPositions(strchr(buf, ':'), pos);
+    else if (strncmp(buf, "FULL", 4) == 0)
+        printf("Server is full\n");
+    else
+        printf("Server error\n");
+
+    return -1;
 }
 
 int main(void) {
@@ -92,13 +116,8 @@ int main(void) {
     if (sFd < 0)
         return 1;
 
-    if (waitForStart(sFd, pos) < 0) {
-        printf("Server error...\n");
-        close(sFd);
-        return 1;
-    }
-
-    pingpong(sFd, pos);
+    if (waitForStart(sFd, pos) == 0)
+        pingpong(sFd, pos);
 
     close(sFd);
     return 0;

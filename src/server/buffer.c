@@ -27,6 +27,7 @@ void append(Buffer* buf, const char* s) {
     int size = strlen(s);
 
     if (buf->end + size > buf->cap) {
+        printf("CALLED MALLOC!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
         int currentSize = buf->end - buf->start;
         int newCap = currentSize + size + 32;
         char* tmp = malloc(newCap);

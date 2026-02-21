@@ -2,13 +2,10 @@
 #include "server.h"
 
 int main() {
-    Server* server;
+    Server* server = initServer(8080);
 
-    server = initServer(8080);
-
-    if (!server) {
+    if (!server)
         return 1;
-    }
 
     printf("Server started on port %d...\n", 8080);
 

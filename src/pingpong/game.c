@@ -17,11 +17,11 @@ static void handleEvents(bool* running, int* y) {
                     break;
                 case SDLK_w:
                     if (*y > 0)
-                        (*y) -= 10;
+                        (*y) -= 15;
                     break;
                 case SDLK_s:
                     if (*y + PADDLE_HEIGHT < HEIGHT)
-                        (*y) += 10;
+                        (*y) += 15;
                     break;
             }
             break;
@@ -31,8 +31,8 @@ static void handleEvents(bool* running, int* y) {
 
 void pingpong(int sfd, int* pos) {
     SDLContext* ctx = createWindow(WIDTH, HEIGHT, "Ping Pong");
-    Paddle player = initPaddle(0, pos[0]);
-    Paddle enemy = initPaddle(WIDTH - PADDLE_WIDTH, pos[1]);
+    Paddle player = initPaddle(5, pos[0]);
+    Paddle enemy = initPaddle(WIDTH - PADDLE_WIDTH - 5, pos[1]);
     Ball ball = initBall(pos[2], pos[3], 10);
 
 	bool running = true;
