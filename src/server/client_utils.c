@@ -13,6 +13,7 @@ void addClient(Server* server, int fd) {
         return;
 
     newClient->fd = fd;
+    newClient->game = NULL;
     initBuffer(&newClient->sendBuffer, 32);
     initBuffer(&newClient->recvBuffer, 32);
 
@@ -24,8 +25,6 @@ void addClient(Server* server, int fd) {
 void deleteClient(Server* server, int fd) {
     if (server->clientCount == 0)
         return;
-
-    printf("Deleteing client...\n");
 
     bool found = false;
     for (int i = 0; i < server->clientCount; i++) {

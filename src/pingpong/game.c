@@ -56,9 +56,17 @@ void pingpong(int sfd, int* pos) {
         SDL_RenderPresent(ctx->renderer);
         SDL_Delay(10);
 
+        //parse until meeet \n
+        //leave rest in buffer, like get next line
         int n = recv(sfd, buf, sizeof(buf), 0);
 
+        buf[n] = '\0';
+
         if (n > 0) {
+            if (strncmp(buf, "WIN", 3) == 0) {
+                printf("You won!\n");
+                break;
+            }
 			char* p = strchr(buf, ':'); //buf;
             //player.rect.y = (int)strtol(p + 1, &p, 10);
 			enemy.rect.y = (int)strtol(p + 1, &p, 10);

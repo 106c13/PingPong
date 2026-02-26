@@ -185,6 +185,32 @@ static void acceptClient(Server* server) {
     epoll_ctl(server->epollFd, EPOLL_CTL_ADD, clientFd, &ev);
 }
 
+static void finishGame(Server* server, Game* game, Client* client) {
+    if (!game)
+        return;
+
+    if (game->p1 == client)
+        sendToClient(server, game->p2, "WIN\n");
+    else
+        sendToClient(server, game->p1, "WIN\n");
+
+    game->p1->game = NULL;
+    game->p2->game = NULL;
+    
+
+    bool found = false;
+    for (int i = 0; i < server->gameCount; i++) {
+        if (server->games[i] == game)
+            found = true;
+
+        if (found && i + 1 < server->gameCount)
+            server->games[i] = server->games[i + 1];
+    }
+    if (found)
+        server->games[--server->gameCount] = NULL;
+    free(game);
+}
+
 static void processEvent(struct epoll_event* event, Server* server) {
     int fd = event->data.fd;
 
@@ -199,6 +225,8 @@ static void processEvent(struct epoll_event* event, Server* server) {
         if (n <= 0) {
             close(fd);
             epoll_ctl(server->epollFd, EPOLL_CTL_DEL, fd, NULL);
+
+            finishGame(server, client->game, client);
             deleteClient(server, fd);
             return;
         }
@@ -213,17 +241,21 @@ static void processEvent(struct epoll_event* event, Server* server) {
                 startGame(server);
         } else if (client) {
             Game* game = client->game;
-            Client* opponent = getOpponent(client);
-            int x = game->ball.x;
-            int y = game->ball.y;
+            
+            if (game) {
+                Client* opponent = getOpponent(client);
+                int x = game->ball.x;
+                int y = game->ball.y;
 
-			client->y = (int)strtol(buf, NULL, 10);
+                client->y = (int)strtol(buf, NULL, 10);
 
-            if (game->p1 != client)
-                x = 900 - x;
+                if (game->p1 != client)
+                    x = 900 - x;
 
-			snprintf(buf, sizeof(buf), "%d:%d:%d:%d\n", client->y, opponent->y, x, y);
-            sendToClient(server, client, buf);
+                snprintf(buf, sizeof(buf), "%d:%d:%d:%d\n", client->y, opponent->y, x, y);
+                sendToClient(server, client, buf);
+            }
+
 		}
     }
     
